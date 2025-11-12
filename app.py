@@ -252,4 +252,152 @@ if uploaded is not None:
     st.header("Batch predictions & evaluation")
     try:
         if uploaded.name.endswith((".xls", ".xlsx")):
-            df_in_
+            df_in = pd.read_excel(uploaded)
+        else:
+            df_in = pd.read_csv(uploaded)
+    except Exception as e:
+        st.error(f"Could not read uploaded file: {e}")
+        df_in = None
+
+    if df_in is not None:
+        st.subheader("Uploaded data preview")
+        st.dataframe(df_in.head())
+
+        # Prepare X for prediction (drop label if present)
+        try:
+            X_batch = prepare_features_from_df(df_in, model)
+        except Exception as e:
+            st.error(f"Feature preparation failed: {e}")
+            X_batch = None
+
+        if X_batch is not None:
+            try:
+                preds = model.predict(X_batch)
+                out = df_in.copy()
+                out["prediction"] = preds
+
+                # probabilities if available
+                if hasattr(model, "predict_proba"):
+                    proba = model.predict_proba(X_batch)
+                    idx_bank, idx_non = get_class_indices(model)
+                    out["prob_bankruptcy"] = proba[:, idx_bank]
+                    if proba.shape[1] > 1:
+                        out["prob_nonbankruptcy"] = proba[:, idx_non]
+
+                st.success("Batch predictions complete.")
+                st.subheader("Predictions preview")
+                st.dataframe(out.head())
+
+                # allow download
+                csv_bytes = out.to_csv(index=False).encode("utf-8")
+                st.download_button("Download predictions (CSV)", data=csv_bytes, file_name="predictions.csv", mime="text/csv")
+
+                # If label present — evaluate
+                label_col = next((c for c in LABEL_CANDIDATES if c in df_in.columns), None)
+                if label_col is not None:
+                    st.subheader("Evaluation using uploaded true labels")
+
+                    # Copy and normalize labels to numeric 0/1
+                    y_true_raw = df_in[label_col].copy()
+
+                    # If string labels, map common forms to numeric
+                    if y_true_raw.dtype == object:
+                        y_norm = y_true_raw.str.strip().str.lower().map({
+                            "bankruptcy": 0,
+                            "bankrupt": 0,
+                            "yes": 0,
+                            "y": 0,
+                            "1": 1,  # in case stored as string '1'
+                            "non-bankruptcy": 1,
+                            "non bankruptcy": 1,
+                            "nonbankruptcy": 1,
+                            "nonbankrupt": 1,
+                            "non bankrupt": 1,
+                            "non": 1,
+                            "no": 1,
+                            "n": 1,
+                            "non-bankrupt": 1,
+                            "non-bank": 1
+                        })
+                        # If mapping produced NaN (unmapped), try to infer by unique values
+                        if y_norm.isna().any():
+                            uniques = list(y_true_raw.unique())
+                            # simple inference: if two uniques and one contains 'bank' text
+                            try:
+                                if len(uniques) == 2:
+                                    u0 = str(uniques[0]).lower()
+                                    u1 = str(uniques[1]).lower()
+                                    if "bank" in u0 and "non" in u1 or "non" in u1:
+                                        y_norm = y_true_raw.str.strip().str.lower().map({uniques[0]:0, uniques[1]:1})
+                                    elif "bank" in u1 and "non" in u0 or "non" in u0:
+                                        y_norm = y_true_raw.str.strip().str.lower().map({uniques[1]:0, uniques[0]:1})
+                            except Exception:
+                                pass
+                        # fallback: if still NaN, attempt to convert to numeric
+                        if y_norm.isna().any():
+                            try:
+                                y_norm = pd.to_numeric(y_true_raw, errors='coerce')
+                            except Exception:
+                                pass
+                    else:
+                        # numeric dtype: assume 0/1 already
+                        y_norm = pd.to_numeric(y_true_raw, errors='coerce')
+
+                    # Drop rows where we couldn't interpret label
+                    valid_mask = ~y_norm.isna()
+                    if valid_mask.sum() < len(y_norm):
+                        st.warning(f"{len(y_norm) - valid_mask.sum()} rows have labels that couldn't be interpreted; they will be ignored for evaluation.")
+                    y_true = y_norm[valid_mask].astype(int)
+                    y_pred_full = pd.Series(out["prediction"]).iloc[valid_mask.index][valid_mask].astype(int).values
+                    # Ensure y_pred aligns indices with y_true
+                    # y_pred_full derived above should match
+
+                    # Now check types and shapes
+                    if len(y_true) != len(y_pred_full):
+                        # try aligning by index (safer)
+                        y_pred_series = pd.Series(out["prediction"])
+                        y_pred_aligned = y_pred_series.loc[y_true.index].astype(int)
+                        y_pred_final = y_pred_aligned.values
+                    else:
+                        y_pred_final = y_pred_full
+
+                    # Compute metrics
+                    try:
+                        acc = accuracy_score(y_true, y_pred_final)
+                        prec = precision_score(y_true, y_pred_final, zero_division=0)
+                        rec = recall_score(y_true, y_pred_final, zero_division=0)
+                        f1s = f1_score(y_true, y_pred_final, zero_division=0)
+
+                        m1, m2, m3, m4 = st.columns(4)
+                        m1.metric("Accuracy", f"{acc:.3f}")
+                        m2.metric("Precision", f"{prec:.3f}")
+                        m3.metric("Recall", f"{rec:.3f}")
+                        m4.metric("F1-Score", f"{f1s:.3f}")
+
+                        # Confusion matrix
+                        plot_confusion_matrix(y_true, y_pred_final)
+
+                        # ROC & PR require probabilities for the positive class (we treat bankruptcy as positive here)
+                        if "prob_bankruptcy" in out.columns:
+                            # create y_true_bank where 1 indicates bankruptcy
+                            # Our y_true currently uses 0 for bankruptcy per mapping above; invert to 1=bankruptcy
+                            y_true_bank = (y_true == 0).astype(int)
+                            scores = out.loc[y_true.index, "prob_bankruptcy"].values
+                            plot_roc_curve(y_true_bank, scores)
+                            plot_pr_curve(y_true_bank, scores)
+                        else:
+                            st.info("Model probabilities not available; ROC/PR curves require predict_proba().")
+                    except Exception as e:
+                        st.error(f"Evaluation failed: {e}")
+
+                else:
+                    st.info("No label column detected. Include a label column (e.g., 'class') for evaluation.")
+
+            except Exception as e:
+                st.error(f"Batch prediction failed: {e}")
+
+# ---------------------------
+# Footer
+# ---------------------------
+st.markdown("---")
+st.caption("Built with Streamlit • Logistic Regression • Evaluation supports text labels (mapped) and numeric labels.")
