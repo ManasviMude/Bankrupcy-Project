@@ -18,139 +18,128 @@ with open("final_logreg_model.pkl", "rb") as f:
 # Page Setup
 # ---------------------------
 st.set_page_config(
-    page_title="Bankruptcy Prediction",
+    page_title="Bankruptcy Prediction App",
     page_icon="🏦",
     layout="wide",
 )
 
 # ---------------------------
-# Enforce LIGHT Theme (white background)
+# Force LIGHT MODE (white background, blue theme)
 # ---------------------------
-st.markdown(
-    """
-    <style>
-    /* Base Light Theme */
+st.markdown("""
+<style>
     html, body, [data-testid="stAppViewContainer"] {
         background-color: #ffffff !important;
-        color: #0d1b2a !important;
+        color: #1a1a1a !important;
         font-family: 'Inter', sans-serif;
     }
-
-    /* Header */
-    .main-title {
-        font-size: 2rem;
-        font-weight: 800;
+    /* Sidebar background */
+    [data-testid="stSidebar"] {
+        background-color: #f5f7fa !important;
+        color: #1a1a1a !important;
+    }
+    /* General text */
+    h1,h2,h3,h4,h5,h6,p,div,span,label {
+        color: #1a1a1a !important;
+    }
+    /* Headings */
+    .title {
         color: #003366 !important;
+        font-weight: 800;
         text-align: center;
+        font-size: 2rem;
         margin-bottom: 0.3rem;
     }
-
-    .sub-title {
+    .subtitle {
         text-align: center;
-        color: #335577 !important;
-        font-size: 1rem;
+        color: #406080 !important;
         margin-bottom: 2rem;
+        font-size: 1rem;
     }
-
-    /* Cards */
+    /* Card */
     .card {
         background: #ffffff;
         border: 1px solid rgba(0,0,0,0.08);
         border-radius: 12px;
-        padding: 1.2rem;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        padding: 1.3rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
     }
-
-    /* Section Titles */
+    /* Section header */
     .section-header {
         font-size: 1.2rem;
         font-weight: 700;
-        color: #003366;
+        color: #003366 !important;
         margin-bottom: 1rem;
     }
-
     /* Buttons */
     .stButton>button {
-        background: linear-gradient(90deg, #0066cc, #33a1fd);
-        color: white !important;
+        background: linear-gradient(90deg,#007bff,#339cff);
+        color: #ffffff !important;
         border: none;
-        border-radius: 10px;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
         font-weight: 600;
-        padding: 0.6rem 1.2rem;
+        font-size: 1rem;
     }
-
     .stButton>button:hover {
-        background: linear-gradient(90deg, #33a1fd, #0066cc);
-        transform: scale(1.02);
+        background: linear-gradient(90deg,#339cff,#007bff);
+        transform: scale(1.03);
     }
-
+    /* Dropdowns / Inputs */
+    div[data-baseweb="select"] > div {
+        background-color: #f9fbff !important;
+        border: 1px solid rgba(0,0,0,0.1) !important;
+        color: #1a1a1a !important;
+        border-radius: 8px !important;
+    }
     /* Metrics */
     .metric-card {
-        background: #f8fbff;
+        background-color: #f7faff;
         border-radius: 10px;
         padding: 1rem;
-        border: 1px solid rgba(0,0,0,0.06);
         text-align: center;
+        border: 1px solid rgba(0,0,0,0.05);
     }
-
-    /* Suggestion Boxes */
+    /* Suggestions */
     .suggestion {
         border-radius: 10px;
         padding: 1rem;
         font-weight: 500;
         margin-top: 1rem;
     }
-
     .good {
-        background: #e9f9ee;
+        background: #e9f9ef;
         border-left: 6px solid #00b37a;
-        color: #0a3d2e;
     }
-
     .bad {
-        background: #fff2f2;
+        background: #fff3f3;
         border-left: 6px solid #e63946;
-        color: #641414;
     }
-
-    /* Sidebar */
-    .css-1d391kg {
-        background-color: #f8fbff !important;
-    }
-
-    /* Make all text readable */
-    h1, h2, h3, h4, p, div, span, label {
-        color: #0d1b2a !important;
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+</style>
+""", unsafe_allow_html=True)
 
 # ---------------------------
 # Sidebar
 # ---------------------------
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/bank.png", width=70)
+    st.image("https://img.icons8.com/fluency/96/money.png", width=70)
     st.markdown("### 🏦 Bankruptcy Predictor")
-    st.write("Light Theme • Logistic Regression Model")
+    st.caption("Light Theme • Logistic Regression Model")
     st.markdown("---")
 
     uploaded = st.file_uploader("📂 Upload CSV or Excel for batch predictions", type=["csv", "xlsx"])
-    show_metrics = st.checkbox("Show evaluation if true labels are provided", value=True)
+    show_metrics = st.checkbox("Show evaluation if labels provided", value=True)
 
     st.markdown("---")
-    st.markdown("**Developed by:** Your Name 💡")
-    st.markdown("**Contact:** your@email.com")
+    st.markdown("**Developed by:** Your Name  \n📧 your@email.com")
     if st.button("🔄 Reset"):
         st.experimental_rerun()
 
 # ---------------------------
 # Header
 # ---------------------------
-st.markdown("<div class='main-title'>🏦 Bankruptcy Prediction App</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-title'>Predict company bankruptcy risk using Logistic Regression — accurate, clear, and easy to use.</div>", unsafe_allow_html=True)
+st.markdown("<div class='title'>🏦 Bankruptcy Prediction App</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>Predict company bankruptcy risk using Logistic Regression — accurate, clear, and user-friendly.</div>", unsafe_allow_html=True)
 
 # ---------------------------
 # Input Section
@@ -159,12 +148,12 @@ st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.markdown("<div class='section-header'>📊 Enter Company Financial Indicators</div>", unsafe_allow_html=True)
 
 options = [0.0, 0.5, 1.0]
-col1, col2 = st.columns(2)
-with col1:
+c1, c2 = st.columns(2)
+with c1:
     industrial_risk = st.selectbox("Industrial Risk", options, index=1)
     management_risk = st.selectbox("Management Risk", options, index=1)
     financial_flexibility = st.selectbox("Financial Flexibility", options, index=1)
-with col2:
+with c2:
     credibility = st.selectbox("Credibility", options, index=1)
     competitiveness = st.selectbox("Competitiveness", options, index=1)
     operating_risk = st.selectbox("Operating Risk", options, index=1)
@@ -179,7 +168,7 @@ data = pd.DataFrame({
 })
 
 # ---------------------------
-# Predict Button
+# Prediction Button
 # ---------------------------
 st.markdown("</div>", unsafe_allow_html=True)
 if st.button("🔍 Predict Bankruptcy"):
@@ -187,18 +176,17 @@ if st.button("🔍 Predict Bankruptcy"):
     prob_bank = model.predict_proba(data)[0][0]
     prob_non = 1 - prob_bank
 
-    # Results
     if pred == 0:
-        st.markdown("<div class='suggestion bad'>⚠️ The company is likely at risk of <b>Bankruptcy</b>. Consider improving liquidity and management practices.</div>", unsafe_allow_html=True)
+        st.markdown("<div class='suggestion bad'>⚠️ The company may be at risk of <b>Bankruptcy</b>. Improve liquidity and reduce operational risk.</div>", unsafe_allow_html=True)
     else:
-        st.markdown("<div class='suggestion good'>✅ The company is predicted to be <b>Financially Healthy</b>. Continue maintaining strong financial flexibility.</div>", unsafe_allow_html=True)
+        st.markdown("<div class='suggestion good'>✅ The company appears <b>Financially Healthy</b>. Maintain your financial flexibility and management quality.</div>", unsafe_allow_html=True)
 
-    # Probabilities
+    # Probability metrics
     colA, colB = st.columns(2)
     with colA:
         st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
         st.markdown("**Bankruptcy Probability**")
-        st.markdown(f"<h2 style='color:#e63946'>{prob_bank*100:.1f}%</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:#d62828'>{prob_bank*100:.1f}%</h2>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
     with colB:
         st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
@@ -206,7 +194,7 @@ if st.button("🔍 Predict Bankruptcy"):
         st.markdown(f"<h2 style='color:#0077b6'>{prob_non*100:.1f}%</h2>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Donut chart (Plotly)
+    # Donut chart
     fig = go.Figure(data=[go.Pie(
         labels=["Bankruptcy", "Non-Bankruptcy"],
         values=[prob_bank, prob_non],
@@ -218,7 +206,7 @@ if st.button("🔍 Predict Bankruptcy"):
     st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------
-# Batch Prediction
+# Batch Predictions
 # ---------------------------
 if uploaded is not None:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -234,19 +222,13 @@ if uploaded is not None:
         preds = model.predict(df)
         df["Prediction"] = preds
         df["Bankruptcy Probability"] = model.predict_proba(df)[:, 0]
-        st.success("✅ Predictions completed successfully.")
+        st.success("✅ Predictions complete.")
         st.dataframe(df.head())
 
         csv = df.to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Download Predictions CSV", data=csv, file_name="predictions.csv", mime="text/csv")
 
-        # Evaluation
-        label_col = None
-        for cand in ["class", "target", "y", "label"]:
-            if cand in df.columns:
-                label_col = cand
-                break
-
+        label_col = next((c for c in ["class","target","label","y"] if c in df.columns), None)
         if show_metrics and label_col:
             y_true = df[label_col]
             y_pred = df["Prediction"]
@@ -254,13 +236,11 @@ if uploaded is not None:
             prec = precision_score(y_true, y_pred)
             rec = recall_score(y_true, y_pred)
             f1 = f1_score(y_true, y_pred)
-
-            c1, c2, c3, c4 = st.columns(4)
+            c1,c2,c3,c4 = st.columns(4)
             c1.metric("Accuracy", f"{acc:.3f}")
             c2.metric("Precision", f"{prec:.3f}")
             c3.metric("Recall", f"{rec:.3f}")
             c4.metric("F1", f"{f1:.3f}")
-
     except Exception as e:
         st.error(f"Error: {e}")
     st.markdown("</div>", unsafe_allow_html=True)
