@@ -44,7 +44,6 @@ with st.sidebar:
 # Main header
 # ---------------------------
 st.title("🏦 Bankruptcy Prediction App")
-st.write("Enter feature values (0, 0.5 or 1) or upload a file for batch predictions. The app will drop any `class`/label column before predicting so feature names match the model.")
 
 # ---------------------------
 # Helper utilities
