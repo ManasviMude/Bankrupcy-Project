@@ -15,7 +15,7 @@ with open("final_logreg_model.pkl", "rb") as f:
     model = pickle.load(f)
 
 # ---------------------------
-# Page Setup
+# Page Config
 # ---------------------------
 st.set_page_config(
     page_title="Bankruptcy Prediction App",
@@ -24,97 +24,124 @@ st.set_page_config(
 )
 
 # ---------------------------
-# Force LIGHT MODE (white background, blue theme)
+# Global Light Theme Styling
 # ---------------------------
 st.markdown("""
 <style>
-    html, body, [data-testid="stAppViewContainer"] {
-        background-color: #ffffff !important;
-        color: #1a1a1a !important;
-        font-family: 'Inter', sans-serif;
-    }
-    /* Sidebar background */
-    [data-testid="stSidebar"] {
-        background-color: #f5f7fa !important;
-        color: #1a1a1a !important;
-    }
-    /* General text */
-    h1,h2,h3,h4,h5,h6,p,div,span,label {
-        color: #1a1a1a !important;
-    }
-    /* Headings */
-    .title {
-        color: #003366 !important;
-        font-weight: 800;
-        text-align: center;
-        font-size: 2rem;
-        margin-bottom: 0.3rem;
-    }
-    .subtitle {
-        text-align: center;
-        color: #406080 !important;
-        margin-bottom: 2rem;
-        font-size: 1rem;
-    }
-    /* Card */
-    .card {
-        background: #ffffff;
-        border: 1px solid rgba(0,0,0,0.08);
-        border-radius: 12px;
-        padding: 1.3rem;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-    }
-    /* Section header */
-    .section-header {
-        font-size: 1.2rem;
-        font-weight: 700;
-        color: #003366 !important;
-        margin-bottom: 1rem;
-    }
-    /* Buttons */
-    .stButton>button {
-        background: linear-gradient(90deg,#007bff,#339cff);
-        color: #ffffff !important;
-        border: none;
-        border-radius: 8px;
-        padding: 0.6rem 1rem;
-        font-weight: 600;
-        font-size: 1rem;
-    }
-    .stButton>button:hover {
-        background: linear-gradient(90deg,#339cff,#007bff);
-        transform: scale(1.03);
-    }
-    /* Dropdowns / Inputs */
-    div[data-baseweb="select"] > div {
-        background-color: #f9fbff !important;
-        border: 1px solid rgba(0,0,0,0.1) !important;
-        color: #1a1a1a !important;
-        border-radius: 8px !important;
-    }
-    /* Metrics */
-    .metric-card {
-        background-color: #f7faff;
-        border-radius: 10px;
-        padding: 1rem;
-        text-align: center;
-        border: 1px solid rgba(0,0,0,0.05);
-    }
-    /* Suggestions */
-    .suggestion {
-        border-radius: 10px;
-        padding: 1rem;
-        font-weight: 500;
-        margin-top: 1rem;
-    }
-    .good {
-        background: #e9f9ef;
-        border-left: 6px solid #00b37a;
-    }
-    .bad {
-        background: #fff3f3;
-        border-left: 6px solid #e63946;
-    }
+/* Base page and text */
+html, body, [data-testid="stAppViewContainer"] {
+    background-color: #ffffff !important;
+    color: #1a1a1a !important;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Sidebar background */
+[data-testid="stSidebar"] {
+    background-color: #f5f7fa !important;
+    color: #1a1a1a !important;
+}
+
+/* Headings */
+.title {
+    color: #003366 !important;
+    font-weight: 800;
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 0.3rem;
+}
+.subtitle {
+    text-align: center;
+    color: #406080 !important;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+}
+
+/* Card container */
+.card {
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px;
+    padding: 1.3rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+/* Section titles */
+.section-header {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #003366 !important;
+    margin-bottom: 1rem;
+}
+
+/* Buttons */
+.stButton>button {
+    background: linear-gradient(90deg,#007bff,#339cff);
+    color: #ffffff !important;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+}
+.stButton>button:hover {
+    background: linear-gradient(90deg,#339cff,#007bff);
+    transform: scale(1.03);
+}
+
+/* Dropdown fields */
+div[data-baseweb="select"] > div {
+    background-color: #f9fbff !important;
+    border: 1px solid rgba(0,0,0,0.1) !important;
+    color: #1a1a1a !important;
+    border-radius: 8px !important;
+}
+
+/* Upload area (light theme fix) */
+section[data-testid="stFileUploaderDropzone"] {
+    background-color: #f9fbff !important;
+    border: 2px dashed #a9c8f5 !important;
+    color: #1a1a1a !important;
+}
+section[data-testid="stFileUploaderDropzone"]:hover {
+    background-color: #eaf3ff !important;
+    border-color: #007bff !important;
+}
+button[data-testid="stFileUploaderBrowseButton"] {
+    background-color: #eaf3ff !important;
+    color: #003366 !important;
+    border-radius: 8px !important;
+    border: 1px solid #a9c8f5 !important;
+    font-weight: 600;
+}
+button[data-testid="stFileUploaderBrowseButton"]:hover {
+    background-color: #dbeaff !important;
+    color: #003366 !important;
+}
+
+/* Metric cards */
+.metric-card {
+    background-color: #f7faff;
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Suggestion boxes */
+.suggestion {
+    border-radius: 10px;
+    padding: 1rem;
+    font-weight: 500;
+    margin-top: 1rem;
+}
+.good {
+    background: #e9f9ef;
+    border-left: 6px solid #00b37a;
+}
+.bad {
+    background: #fff3f3;
+    border-left: 6px solid #e63946;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -179,9 +206,9 @@ if st.button("🔍 Predict Bankruptcy"):
     if pred == 0:
         st.markdown("<div class='suggestion bad'>⚠️ The company may be at risk of <b>Bankruptcy</b>. Improve liquidity and reduce operational risk.</div>", unsafe_allow_html=True)
     else:
-        st.markdown("<div class='suggestion good'>✅ The company appears <b>Financially Healthy</b>. Maintain your financial flexibility and management quality.</div>", unsafe_allow_html=True)
+        st.markdown("<div class='suggestion good'>✅ The company appears <b>Financially Healthy</b>. Maintain strong financial management and competitiveness.</div>", unsafe_allow_html=True)
 
-    # Probability metrics
+    # Probabilities
     colA, colB = st.columns(2)
     with colA:
         st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
