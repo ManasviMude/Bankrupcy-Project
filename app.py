@@ -9,25 +9,93 @@ with open('final_logreg_model.pkl', 'rb') as f:
     model = pickle.load(f)
 
 # ---------------------------
-# Streamlit App UI
+# Streamlit Page Configuration
 # ---------------------------
-st.set_page_config(page_title="Bankruptcy Prediction App", layout="centered")
-st.title("🏦 Bankruptcy Prediction App (Logistic Regression)")
+st.set_page_config(
+    page_title="Bankruptcy Prediction App",
+    page_icon="🏦",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
+# ---------------------------
+# Custom CSS for a beautiful light UI
+# ---------------------------
 st.markdown("""
-Predict whether a company is likely to go **Bankrupt** or remain **Financially Healthy**  
-based on its financial indicators.
-""")
+    <style>
+        body {
+            background-color: #f7f9fc;
+            color: #2c2c2c;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .stApp {
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0px 6px 18px rgba(0,0,0,0.05);
+        }
+        .stButton button {
+            background: linear-gradient(to right, #4A90E2, #50E3C2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.6rem 1.3rem;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease-in-out;
+        }
+        .stButton button:hover {
+            transform: scale(1.05);
+            background: linear-gradient(to right, #50E3C2, #4A90E2);
+        }
+        .main-title {
+            color: #003366;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #4f4f4f;
+            font-size: 1.05rem;
+            margin-bottom: 2rem;
+        }
+        .stNumberInput label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .footer {
+            text-align: center;
+            color: #888;
+            margin-top: 2rem;
+            font-size: 0.9rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# Input fields
-st.subheader("📊 Enter Company Financial Indicators")
-industrial_risk = st.number_input("Industrial Risk", 0.0, 1.0, 0.5)
-management_risk = st.number_input("Management Risk", 0.0, 1.0, 0.5)
-financial_flexibility = st.number_input("Financial Flexibility", 0.0, 1.0, 0.5)
-credibility = st.number_input("Credibility", 0.0, 1.0, 0.5)
-competitiveness = st.number_input("Competitiveness", 0.0, 1.0, 0.5)
-operating_risk = st.number_input("Operating Risk", 0.0, 1.0, 0.5)
+# ---------------------------
+# Header Section
+# ---------------------------
+st.markdown("<h1 class='main-title'>🏦 Bankruptcy Prediction App</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Predict a company's financial health using Logistic Regression</p>", unsafe_allow_html=True)
 
-# Prepare dataframe for prediction
+# ---------------------------
+# Input Section
+# ---------------------------
+st.markdown("### 📊 Enter Company Financial Indicators")
+
+col1, col2 = st.columns(2)
+with col1:
+    industrial_risk = st.number_input("Industrial Risk", 0.0, 1.0, 0.5)
+    management_risk = st.number_input("Management Risk", 0.0, 1.0, 0.5)
+    financial_flexibility = st.number_input("Financial Flexibility", 0.0, 1.0, 0.5)
+
+with col2:
+    credibility = st.number_input("Credibility", 0.0, 1.0, 0.5)
+    competitiveness = st.number_input("Competitiveness", 0.0, 1.0, 0.5)
+    operating_risk = st.number_input("Operating Risk", 0.0, 1.0, 0.5)
+
+# Prepare DataFrame for prediction
 data = pd.DataFrame({
     'industrial_risk': [industrial_risk],
     'management_risk': [management_risk],
@@ -37,55 +105,30 @@ data = pd.DataFrame({
     'operating_risk': [operating_risk]
 })
 
-# Prediction
+# ---------------------------
+# Prediction Button
+# ---------------------------
+st.markdown("---")
 if st.button("🔍 Predict Bankruptcy"):
     prediction = model.predict(data)[0]
+    st.markdown("---")
+
     if prediction == 0:
-        st.error("⚠️ The company is predicted to be at risk of **Bankruptcy**.")
+        st.error("⚠️ **Result:** The company is predicted to be at risk of **Bankruptcy**.")
+        st.markdown(
+            "<div style='background-color:#ffe6e6;padding:10px;border-left:6px solid #ff4d4d;border-radius:8px;'>"
+            "<b>Suggestion:</b> Review liquidity, reduce operational risk, and increase management efficiency."
+            "</div>", unsafe_allow_html=True
+        )
     else:
-        st.success("✅ The company is predicted to be **Financially Healthy**.")
-        
-# ---------------------------------------------------
-# 📂 Batch Prediction via File Upload (CSV or Excel)
-# ---------------------------------------------------
-st.markdown("---")
-st.subheader("📂 Upload File for Batch Prediction (CSV or Excel)")
-
-uploaded_file = st.file_uploader(
-    "Upload a CSV or Excel file with company financial data",
-    type=["csv", "xlsx", "xls"]
-)
-
-if uploaded_file:
-    # Detect file type and load appropriately
-    try:
-        if uploaded_file.name.endswith('.csv'):
-            batch_data = pd.read_csv(uploaded_file)
-        else:
-            batch_data = pd.read_excel(uploaded_file)
-        
-        st.write("✅ File uploaded successfully!")
-        st.write("Preview of uploaded data:")
-        st.dataframe(batch_data.head())
-        
-        # Make predictions
-        preds = model.predict(batch_data)
-        batch_data['Prediction'] = ['Bankruptcy' if p == 0 else 'Non-Bankruptcy' for p in preds]
-        
-        st.markdown("### 📊 Batch Predictions:")
-        st.dataframe(batch_data)
-        
-        # Allow user to download results
-        csv_download = batch_data.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="⬇️ Download Predictions as CSV",
-            data=csv_download,
-            file_name="bankruptcy_predictions.csv",
-            mime="text/csv"
+        st.success("✅ **Result:** The company is predicted to be **Financially Healthy**.")
+        st.markdown(
+            "<div style='background-color:#e6ffed;padding:10px;border-left:6px solid #00cc66;border-radius:8px;'>"
+            "<b>Suggestion:</b> Maintain financial flexibility and competitiveness to stay stable."
+            "</div>", unsafe_allow_html=True
         )
 
-    except Exception as e:
-        st.error(f"❌ Error processing file: {e}")
-
-st.markdown("---")
-st.caption("Developed with ❤️ using Streamlit and Scikit-learn")
+# ---------------------------
+# Footer
+# ---------------------------
+st.markdown("<p class='footer'>Developed with ❤️ using Streamlit and Scikit-learn | Designed by ChatGPT ✨</p>", unsafe_allow_html=True)
