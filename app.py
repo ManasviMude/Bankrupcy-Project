@@ -10,19 +10,19 @@ from sklearn.metrics import (
 )
 
 # ---------------------------
-# IMPORTANT: set_page_config MUST be called before any other Streamlit commands
+# MUST call set_page_config before any other Streamlit calls
 # ---------------------------
 st.set_page_config(page_title="Bankruptcy Prediction App", page_icon="🏦", layout="wide")
 
-# =========================
+# ---------------------------
 # Configuration & constants
-# =========================
+# ---------------------------
 MODEL_PATH = "final_logreg_model.pkl"
 LABEL_CANDIDATES = ["class", "Class", "target", "Target", "y", "label", "Label"]
 
-# =========================
+# ---------------------------
 # Load model (cached)
-# =========================
+# ---------------------------
 @st.cache_resource
 def load_model(path: str):
     with open(path, "rb") as f:
@@ -34,19 +34,23 @@ except FileNotFoundError:
     st.error(f"Model file '{MODEL_PATH}' not found in the app folder. Upload or place the model file and restart.")
     st.stop()
 
-# =========================
+# ---------------------------
 # Utility helpers
-# =========================
+# ---------------------------
 def prepare_features_from_df(df: pd.DataFrame, model) -> pd.DataFrame:
-    """Drop label column if present; align columns to model.feature_names_in_ (if available)."""
+    """
+    - Drop a label column if present (common names).
+    - Align columns to model.feature_names_in_ (if available) by adding missing columns with 0.
+    - Otherwise use numeric columns.
+    """
     X = df.copy()
     for c in LABEL_CANDIDATES:
         if c in X.columns:
             X = X.drop(columns=[c])
             break
+
     if hasattr(model, "feature_names_in_"):
         expected = list(model.feature_names_in_)
-        # add missing expected columns as zeros
         for col in expected:
             if col not in X.columns:
                 X[col] = 0.0
@@ -58,15 +62,17 @@ def prepare_features_from_df(df: pd.DataFrame, model) -> pd.DataFrame:
     return X.fillna(0)
 
 def get_class_indices(model):
-    """Return indices (idx_bankruptcy, idx_nonbankruptcy) for model.predict_proba columns."""
+    """Return (idx_bankruptcy, idx_nonbank) mapping for model.classes_ order."""
     classes = list(getattr(model, "classes_", []))
     idx_bank = None
+    # try numeric 0 label
     try:
         idx_bank = classes.index(0)
     except ValueError:
-        # if string labels, try to guess bankruptcy
+        # try common string forms
         for i, c in enumerate(classes):
-            if str(c).lower().startswith("bank"):
+            s = str(c).lower()
+            if s.startswith("bank") or "bankrupt" in s:
                 idx_bank = i
                 break
     if idx_bank is None:
@@ -97,7 +103,7 @@ def plot_horizontal_prob_bar(prob_bank: float, prob_non: float):
         xaxis=dict(range=[0,100], title="Probability (%)"),
         yaxis=dict(title=""),
         margin=dict(l=10, r=10, t=10, b=10),
-        height=250,
+        height=220,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -145,61 +151,44 @@ def plot_pr_curve(y_true_binary, y_scores):
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# =========================
-# Sidebar
-# =========================
+# ---------------------------
+# Sidebar & Project Info
+# ---------------------------
 with st.sidebar:
-    st.title("About this Project")
-    st.write(
-        "- **Goal**: Predict bankruptcy risk using Logistic Regression.\n"
-        "- **Inputs**: Six risk/score indicators coded as `0`, `0.5`, or `1`.\n"
-        "- **Outputs**: Class prediction + probabilities.\n"
-        "- **Batch Mode**: Upload CSV/XLSX to predict many rows and (if labels present) evaluate with ROC/PR curves."
-    )
+    st.title("About / Upload")
+    st.write("- Predict bankruptcy risk using a trained Logistic Regression model.")
+    st.write("- Provide inputs manually or upload CSV/XLSX with same feature columns.")
     st.markdown("---")
-    uploaded = st.file_uploader("📂 Upload CSV/XLSX for batch predictions", type=["csv", "xlsx", "xls"])
-    st.caption("If your file includes a label column (e.g., `class`), the app will show evaluation with ROC, PR, and Confusion Matrix.")
+    uploaded = st.file_uploader("Upload CSV/XLSX for batch predictions (optional)", type=["csv", "xlsx", "xls"])
+    st.caption("If your file has a label column (e.g., `class`), the app will evaluate and show ROC/PR/CM.")
     st.markdown("---")
-    st.write("**Model Info**")
+    st.write("Model info:")
     st.write(f"- Type: `{model.__class__.__name__}`")
-    st.write(f"- Probabilities: `{'Yes' if hasattr(model, 'predict_proba') else 'No'}`")
+    st.write(f"- predict_proba: {'Yes' if hasattr(model,'predict_proba') else 'No'}")
     if hasattr(model, "classes_"):
-        st.write(f"- Classes: `{list(model.classes_)}`")
+        st.write(f"- Classes: {list(model.classes_)}")
     st.markdown("---")
     st.write("Developer: Your Name")
-    st.write("Contact: you@example.com")
 
-# =========================
+# ---------------------------
 # Header & Overview
-# =========================
+# ---------------------------
 st.title("🏦 Bankruptcy Prediction App")
-st.write(
-    "Provide the company's financial indicators below or upload a dataset in the sidebar. "
-    "Predictions are made with a trained Logistic Regression model. "
-    "If your uploaded data has true labels, you'll also see evaluation charts (ROC, PR) and metrics."
-)
+st.write("Enter the six features (0, 0.5, or 1) for a single prediction, or upload a file for batch predictions and evaluation.")
 
-with st.expander("Project Details", expanded=False):
+with st.expander("Features expected (click to expand)"):
     st.markdown(
         """
-        **Inputs (features expected by the model):**
-        - `industrial_risk` — overall industry-related risk  
-        - `management_risk` — risk linked to management quality  
-        - `financial_flexibility` — ability to adapt financially  
-        - `credibility` — reliability/perceived creditworthiness  
-        - `competitiveness` — market competitiveness  
-        - `operating_risk` — operational/process risks  
-
-        **Targets / Labels (if present in uploaded data):**
-        - `0` → Bankruptcy
-        - `1` → Non-Bankruptcy
+        - `industrial_risk`, `management_risk`, `financial_flexibility`,  
+          `credibility`, `competitiveness`, `operating_risk`
+        - Labels in uploaded file can be numeric (0/1) or text ('bankruptcy'/'non-bankruptcy').
         """
     )
 
-# =========================
-# Manual Input (Single Prediction)
-# =========================
-st.header("Single Prediction (Manual Input)")
+# ---------------------------
+# Manual input (single)
+# ---------------------------
+st.header("Single prediction (manual)")
 opts = [0.0, 0.5, 1.0]
 c1, c2 = st.columns(2)
 with c1:
@@ -220,127 +209,47 @@ single_df = pd.DataFrame([{
     "operating_risk": operating_risk
 }])
 
-X_single = prepare_features_from_df(single_df, model)
+try:
+    X_single = prepare_features_from_df(single_df, model)
+except Exception as e:
+    st.error(f"Input preparation failed: {e}")
+    X_single = None
 
-if st.button("🔍 Predict (Manual)"):
-    try:
-        pred = model.predict(X_single)[0]
-        if hasattr(model, "predict_proba"):
-            probs = model.predict_proba(X_single)[0]
-            idx_bank, idx_non = get_class_indices(model)
-            p_bank = float(probs[idx_bank])
-            p_non = float(probs[idx_non]) if idx_non < len(probs) else 1.0 - p_bank
-        else:
-            p_bank = 1.0 if pred == 0 else 0.0
-            p_non = 1.0 - p_bank
+if st.button("Predict (single)"):
+    if X_single is None:
+        st.error("Input not ready for prediction.")
+    else:
+        try:
+            pred = model.predict(X_single)[0]
+            if hasattr(model, "predict_proba"):
+                probs = model.predict_proba(X_single)[0]
+                idx_bank, idx_non = get_class_indices(model)
+                p_bank = float(probs[idx_bank])
+                p_non = float(probs[idx_non]) if idx_non < len(probs) else 1.0 - p_bank
+            else:
+                p_bank = 1.0 if pred == 0 else 0.0
+                p_non = 1.0 - p_bank
 
-        if pred == 0:
-            st.error("Result: The company is predicted to be at **RISK OF BANKRUPTCY**.")
-        else:
-            st.success("Result: The company is predicted to be **NON-BANKRUPT (Financially Healthy)**.")
+            if pred == 0:
+                st.error("Prediction: RISK OF BANKRUPTCY")
+            else:
+                st.success("Prediction: NON-BANKRUPT (Financially Healthy)")
 
-        st.subheader("Predicted Probabilities")
-        cpa, cpb = st.columns(2)
-        cpa.metric("Bankruptcy", f"{p_bank*100:.1f}%")
-        cpb.metric("Non-Bankruptcy", f"{p_non*100:.1f}%")
+            st.subheader("Predicted probabilities")
+            sa, sb = st.columns(2)
+            sa.metric("Bankruptcy", f"{p_bank*100:.1f}%")
+            sb.metric("Non-Bankruptcy", f"{p_non*100:.1f}%")
 
-        # Horizontal probability bar (no pie chart)
-        plot_horizontal_prob_bar(p_bank, p_non)
+            plot_horizontal_prob_bar(p_bank, p_non)
 
-    except Exception as e:
-        st.error(f"Prediction error: {e}")
+        except Exception as e:
+            st.error(f"Prediction error: {e}")
 
-# =========================
-# Batch Prediction (Upload)
-# =========================
+# ---------------------------
+# Batch upload & evaluation
+# ---------------------------
 if uploaded is not None:
-    st.header("Batch Predictions & Evaluation")
-
-    # Read uploaded file
+    st.header("Batch predictions & evaluation")
     try:
         if uploaded.name.endswith((".xls", ".xlsx")):
-            df_in = pd.read_excel(uploaded)
-        else:
-            df_in = pd.read_csv(uploaded)
-    except Exception as e:
-        st.error(f"Could not read uploaded file: {e}")
-        df_in = None
-
-    if df_in is not None:
-        st.subheader("Preview of Uploaded Data")
-        st.dataframe(df_in.head())
-
-        try:
-            X_batch = prepare_features_from_df(df_in, model)
-        except Exception as e:
-            st.error(f"Error preparing features: {e}")
-            X_batch = None
-
-        if X_batch is not None:
-            try:
-                preds = model.predict(X_batch)
-                out = df_in.copy()
-                out["prediction"] = preds
-
-                # Attach probabilities if available
-                if hasattr(model, "predict_proba"):
-                    proba = model.predict_proba(X_batch)
-                    idx_bank, idx_non = get_class_indices(model)
-                    out["prob_bankruptcy"] = proba[:, idx_bank]
-                    if proba.shape[1] > 1:
-                        out["prob_nonbankruptcy"] = proba[:, idx_non]
-
-                st.success("✅ Batch predictions complete.")
-                st.subheader("Predictions (head)")
-                st.dataframe(out.head())
-
-                # Download predictions
-                csv_bytes = out.to_csv(index=False).encode("utf-8")
-                st.download_button("⬇️ Download Predictions CSV", data=csv_bytes, file_name="predictions.csv", mime="text/csv")
-
-                # If label present, evaluate with ROC/PR/CM
-                label_col = next((c for c in LABEL_CANDIDATES if c in df_in.columns), None)
-                if label_col is not None:
-                    st.subheader("Evaluation (using uploaded true labels)")
-                    y_true = df_in[label_col]
-                    y_pred = out["prediction"]
-
-                    acc = accuracy_score(y_true, y_pred)
-                    prec = precision_score(y_true, y_pred, zero_division=0)
-                    rec = recall_score(y_true, y_pred, zero_division=0)
-                    f1 = f1_score(y_true, y_pred, zero_division=0)
-
-                    m1, m2, m3, m4 = st.columns(4)
-                    m1.metric("Accuracy", f"{acc:.3f}")
-                    m2.metric("Precision", f"{prec:.3f}")
-                    m3.metric("Recall", f"{rec:.3f}")
-                    m4.metric("F1-Score", f"{f1:.3f}")
-
-                    # Confusion Matrix
-                    plot_confusion_matrix(y_true, y_pred)
-
-                    # ROC & PR (need probabilities for the positive class = bankruptcy)
-                    if "prob_bankruptcy" in out.columns:
-                        # create binary labels: 1 for bankruptcy, else 0
-                        y_true_bank = (y_true == 0).astype(int)
-                        scores = out["prob_bankruptcy"].values
-
-                        # ROC curve
-                        plot_roc_curve(y_true_bank, scores)
-
-                        # Precision–Recall curve
-                        plot_pr_curve(y_true_bank, scores)
-                    else:
-                        st.info("Model probabilities not available; ROC/PR curves require predict_proba().")
-
-                else:
-                    st.info("No label column detected in uploaded data. Add a label column (e.g., 'class') to see evaluation metrics and ROC/PR curves.")
-
-            except Exception as e:
-                st.error(f"Batch prediction failed: {e}")
-
-# =========================
-# Footer
-# =========================
-st.markdown("---")
-st.caption("Built with Streamlit • Logistic Regression • ROC/PR/Confusion Matrix available when labels are provided.")
+            df_in_
