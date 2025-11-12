@@ -1,70 +1,129 @@
-# app.py
+# app.py — Fancy visual upgrade for Bankruptcy Prediction App
 import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
 import plotly.graph_objects as go
+from time import sleep
 
-# ---------------------------------------
-# Page config: must be first Streamlit call
-# ---------------------------------------
-st.set_page_config(page_title="Bankruptcy Prediction App", page_icon="🏦", layout="wide")
+# ---------------------------
+# Page config (must be first)
+# ---------------------------
+st.set_page_config(page_title="Bankruptcy Predictor ✨", page_icon="🏦", layout="wide")
 
-# ---------------------------------------
-# Minimal CSS for nicer cards & spacing
-# (keeps overall Streamlit look but tidies UI)
-# ---------------------------------------
+# ---------------------------
+# Minimal JS-free CSS: gradient header, glass cards, animated button
+# ---------------------------
 st.markdown(
     """
     <style>
-    .card {
-        background: #ffffff;
-        border: 1px solid rgba(0,0,0,0.06);
-        border-radius: 10px;
-        padding: 18px;
-        box-shadow: 0 6px 20px rgba(16,24,40,0.04);
+    /* Page base */
+    html, body, [data-testid="stAppViewContainer"] {
+        background: linear-gradient(180deg, #f7fbff 0%, #ffffff 40%) !important;
+        color: #07213a !important;
+        font-family: Inter, 'Segoe UI', Roboto, sans-serif;
     }
-    .result-card {
-        border-radius: 10px;
-        padding: 14px;
+
+    /* Hero header */
+    .hero {
+        background: linear-gradient(90deg, rgba(3,102,214,0.12), rgba(2,184,170,0.06));
+        border-radius: 14px;
+        padding: 26px;
+        margin-bottom: 18px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        box-shadow: 0 8px 30px rgba(3,102,214,0.06);
+        border: 1px solid rgba(3,102,214,0.06);
     }
-    .suggestion {
-        padding: 10px 12px;
-        border-radius: 8px;
-        font-weight: 600;
-        margin-top: 8px;
+    .hero .logo {
+        width:72px;
+        height:72px;
+        border-radius:14px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:34px;
+        background: linear-gradient(135deg,#0077ff,#00c2a8);
+        color: #fff;
+        box-shadow: 0 6px 18px rgba(3,102,214,0.12);
     }
-    .good { background:#e9f9ef; border-left:6px solid #00b37a; color:#0a3d2e; }
-    .bad  { background:#fff3f3; border-left:6px solid #e63946; color:#641414; }
-    .small-muted { color: #6b7280; font-size:13px; }
+    .hero h1 {margin:0; color:#032a4a; font-size:28px; font-weight:800;}
+    .hero p {margin:0;color:#345c78;font-size:14px;}
+
+    /* Glass cards */
+    .glass {
+        background: rgba(255,255,255,0.85);
+        border-radius:12px;
+        padding:16px;
+        border: 1px solid rgba(11, 44, 78, 0.06);
+        box-shadow: 0 10px 30px rgba(11,44,78,0.04);
+    }
+
+    /* Cool button */
+    .glow-button .stButton>button {
+        background: linear-gradient(90deg,#0077ff,#00c2a8) !important;
+        color: #fff !important;
+        padding: 10px 16px !important;
+        border-radius: 12px !important;
+        font-weight:700 !important;
+        box-shadow: 0 8px 24px rgba(3,102,214,0.18) !important;
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .glow-button .stButton>button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 18px 40px rgba(3,102,214,0.22) !important;
+    }
+
+    /* Metric bigger */
+    .big-metric { font-size:28px; font-weight:800; color:#032a4a; margin-bottom:4px; }
+    .micro { color:#547892; font-size:13px; }
+
+    /* Suggestion pill */
+    .suggest {
+        padding:10px 12px; border-radius:10px; font-weight:600;
+        background: linear-gradient(90deg, rgba(0,194,168,0.06), rgba(3,102,214,0.02));
+        color:#063a3a;
+        border-left:6px solid #00c2a8;
+    }
+
+    /* Small muted */
+    .muted { color:#6b7d90; font-size:13px; }
+
+    /* Footer small */
+    .footer { text-align:center; color:#6b7d90; margin-top:18px; font-size:13px; }
+
+    /* Responsive tweaks */
+    @media (max-width: 800px) {
+        .hero { flex-direction: column; text-align:center; }
+    }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
-# ---------------------------------------
-# Constants and model loading
-# ---------------------------------------
+# ---------------------------
+# Constants and model
+# ---------------------------
 MODEL_PATH = "final_logreg_model.pkl"
 LABEL_CANDIDATES = ["class", "Class", "target", "Target", "y", "label", "Label"]
 
 @st.cache_resource
-def load_model(path: str):
+def load_model(path):
     with open(path, "rb") as f:
         return pickle.load(f)
 
 try:
     model = load_model(MODEL_PATH)
 except FileNotFoundError:
-    st.error(f"Model file '{MODEL_PATH}' not found in the app folder. Upload it and restart.")
+    st.error(f"Model file '{MODEL_PATH}' not found. Put the pickle in app folder.")
     st.stop()
 
-# ---------------------------------------
-# Helpers
-# ---------------------------------------
+# ---------------------------
+# Helper functions
+# ---------------------------
 def prepare_features_from_df(df: pd.DataFrame, model) -> pd.DataFrame:
     X = df.copy()
-    # remove common label column (if present)
     for c in LABEL_CANDIDATES:
         if c in X.columns:
             X = X.drop(columns=[c])
@@ -86,8 +145,7 @@ def get_class_indices(model):
         idx_bank = classes.index(0)
     except Exception:
         for i, c in enumerate(classes):
-            s = str(c).lower()
-            if "bank" in s:
+            if "bank" in str(c).lower():
                 idx_bank = i
                 break
     if idx_bank is None:
@@ -95,72 +153,71 @@ def get_class_indices(model):
     idx_non = 1 if idx_bank == 0 and len(classes) > 1 else 0
     return idx_bank, idx_non
 
-def donut_plot(prob_bank, prob_non, title="Predicted probabilities"):
-    fig = go.Figure(
-        data=[
-            go.Pie(
-                labels=["Bankruptcy", "Non-Bankruptcy"],
-                values=[prob_bank, prob_non],
-                hole=0.54,
-                marker=dict(colors=["#ef553b", "#00cc96"]),
-                sort=False,
-                textinfo="none",
-                hoverinfo="label+percent"
-            )
-        ]
-    )
-    # central label
+def fancy_donut(prob_bank, prob_non):
+    labels = ["Bankruptcy", "Non-Bankruptcy"]
+    values = [prob_bank, prob_non]
+    colors = ["#ff6b6b", "#20c997"]
+    fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=0.62,
+                                 marker=dict(colors=colors), sort=False,
+                                 textinfo='none', hoverinfo='label+percent')])
+    # center annotation shows both percentages stacked
     fig.update_layout(
-        annotations=[dict(text=f"{prob_bank*100:.1f}%<br>Bankrupt", x=0.5, y=0.5, font_size=18, showarrow=False)],
         showlegend=True,
-        margin=dict(l=0, r=0, t=30, b=0),
-        title={"text": title, "x":0.5}
+        annotations=[dict(text=f"<b>{prob_bank*100:.1f}%</b><br><span style='font-size:12px;color:#6b7d90'>Bankrupt</span><br><b>{prob_non*100:.1f}%</b><br><span style='font-size:12px;color:#6b7d90'>Healthy</span>",
+                          x=0.5, y=0.5, showarrow=False, font=dict(size=14))],
+        margin=dict(t=10,b=10,l=10,r=10)
     )
     return fig
 
-# ---------------------------------------
-# Sidebar (info + upload)
-# ---------------------------------------
+# ---------------------------
+# Sidebar
+# ---------------------------
 with st.sidebar:
-    st.title("About")
-    st.write("Bankruptcy prediction using a trained Logistic Regression model.")
+    st.markdown("<div style='text-align:center'><div style='width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,#0077ff,#00c2a8);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:28px'>💰</div></div>", unsafe_allow_html=True)
+    st.title("Bankruptcy Predictor")
+    st.caption("Stylish UI • Logistic Regression")
     st.markdown("---")
-    uploaded = st.file_uploader("Upload CSV or Excel for batch prediction (optional)", type=["csv", "xlsx"])
-    st.caption("If your file has `class` labels (text or numeric), the app will show counts in the pie chart.")
+    uploaded = st.file_uploader("Upload CSV / Excel for batch prediction (optional)", type=["csv", "xlsx"])
     st.markdown("---")
-    st.write("Model info:")
+    st.write("Model info")
     st.write(f"- Type: `{model.__class__.__name__}`")
     st.write(f"- Probabilities: {'Yes' if hasattr(model,'predict_proba') else 'No'}")
     if hasattr(model, "classes_"):
-        st.write(f"- Classes: {list(model.classes_)}")
+        st.write(f"- Classes: `{list(model.classes_)}`")
     st.markdown("---")
-    st.write("Developer: Your Name")
+    st.write("Developed by: Your Name")
 
-# ---------------------------------------
-# Main header
-# ---------------------------------------
-st.title("🏦 Bankruptcy Prediction App")
-st.write("Use manual inputs for a single prediction (donut chart + metrics) or upload a dataset for batch predictions.")
+# ---------------------------
+# Hero header
+# ---------------------------
+st.markdown(
+    f"""
+    <div class="hero">
+      <div class="logo">🏦</div>
+      <div>
+        <h1>Bankruptcy Prediction</h1>
+        <p>Interactive, modern UI for quick bankruptcy risk checks. Single prediction donut + batch summary.</p>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-# ---------------------------------------
-# Single prediction UI (improved)
-# ---------------------------------------
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.markdown("### 📊 Single Company Prediction", unsafe_allow_html=True)
-st.markdown("<div class='small-muted'>Choose values (0, 0.5, 1) for each indicator and click Predict.</div>", unsafe_allow_html=True)
-
+# ---------------------------
+# Single Prediction (fancy)
+# ---------------------------
+st.markdown('<div class="glass">', unsafe_allow_html=True)
+st.markdown("### Single Company Prediction  — Enter indicators (0 / 0.5 / 1)", unsafe_allow_html=True)
 opts = [0.0, 0.5, 1.0]
-col1, col2 = st.columns(2)
-with col1:
+c1, c2 = st.columns(2)
+with c1:
     industrial_risk = st.selectbox("Industrial Risk", opts, index=1)
     management_risk = st.selectbox("Management Risk", opts, index=1)
     financial_flexibility = st.selectbox("Financial Flexibility", opts, index=1)
-with col2:
+with c2:
     credibility = st.selectbox("Credibility", opts, index=1)
     competitiveness = st.selectbox("Competitiveness", opts, index=1)
     operating_risk = st.selectbox("Operating Risk", opts, index=1)
-
-st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
 single_df = pd.DataFrame([{
     "industrial_risk": industrial_risk,
@@ -171,55 +228,63 @@ single_df = pd.DataFrame([{
     "operating_risk": operating_risk
 }])
 
-# Predict button and display
-if st.button("🔍 Predict (Single)"):
-    try:
-        X_single = prepare_features_from_df(single_df, model)
-        pred = model.predict(X_single)[0]
-        if hasattr(model, "predict_proba"):
-            probs = model.predict_proba(X_single)[0]
-            idx_bank, idx_non = get_class_indices(model)
-            prob_bank = float(probs[idx_bank]) if idx_bank is not None else 0.0
-            prob_non = float(probs[idx_non]) if idx_non is not None else (1.0 - prob_bank)
-        else:
-            prob_bank = 1.0 if pred == 0 else 0.0
-            prob_non = 1.0 - prob_bank
+# fancy button wrapper
+st.markdown('<div class="glow-button">', unsafe_allow_html=True)
+predict_single = st.button("✨ Predict (Single)")
+st.markdown('</div>', unsafe_allow_html=True)
 
-        # Top result card (two-column)
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            if pred == 0:
-                st.markdown("<div class='result-card bad'>", unsafe_allow_html=True)
-                st.error("⚠️ Prediction: RISK OF BANKRUPTCY")
-                st.markdown("</div>", unsafe_allow_html=True)
-                st.markdown("<div class='suggestion bad'>💡 Suggestion: Improve liquidity and reduce operating/management risk.</div>", unsafe_allow_html=True)
+if predict_single:
+    with st.spinner("Analyzing the company..."):
+        sleep(0.7)  # short UX pause to let animation show
+        try:
+            X_single = prepare_features_from_df(single_df, model)
+            pred = model.predict(X_single)[0]
+            if hasattr(model, "predict_proba"):
+                probs = model.predict_proba(X_single)[0]
+                idx_bank, idx_non = get_class_indices(model)
+                prob_bank = float(probs[idx_bank]) if idx_bank is not None else 0.0
+                prob_non = float(probs[idx_non]) if idx_non is not None else (1.0 - prob_bank)
             else:
-                st.markdown("<div class='result-card'>", unsafe_allow_html=True)
-                st.success("✅ Prediction: FINANCIALLY HEALTHY (Non-Bankrupt)")
-                st.markdown("</div>", unsafe_allow_html=True)
-                st.markdown("<div class='suggestion good'>💡 Suggestion: Maintain competitiveness and strong financial flexibility.</div>", unsafe_allow_html=True)
+                prob_bank = 1.0 if pred == 0 else 0.0
+                prob_non = 1.0 - prob_bank
 
-            st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-            # probability metrics
-            st.metric("Bankruptcy Probability", f"{prob_bank*100:.1f}%")
-            st.metric("Non-Bankruptcy Probability", f"{prob_non*100:.1f}%")
+            # Layout: left = result + metrics, right = donut
+            left, right = st.columns([1.1, 1])
+            with left:
+                if pred == 0:
+                    st.markdown("<div class='result-card bad'>", unsafe_allow_html=True)
+                    st.error("⚠️ Prediction: RISK OF BANKRUPTCY")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown("<div class='suggest'>💡 Suggestion: Improve liquidity and management efficiency.</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div class='result-card'>", unsafe_allow_html=True)
+                    st.success("✅ Prediction: FINANCIALLY HEALTHY")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown("<div class='suggest'>💡 Suggestion: Maintain competitiveness and cash flexibility.</div>", unsafe_allow_html=True)
 
-        # Donut chart on the right
-        with c2:
-            fig = donut_plot(prob_bank, prob_non, title="Predicted probability (donut)")
-            st.plotly_chart(fig, use_container_width=True)
+                st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+                st.write("<div class='micro'>Probabilities</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='big-metric'>{prob_bank*100:.1f}%</div>", unsafe_allow_html=True)
+                st.markdown("<div class='muted'>Bankruptcy probability</div>", unsafe_allow_html=True)
+                st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='big-metric'>{prob_non*100:.1f}%</div>", unsafe_allow_html=True)
+                st.markdown("<div class='muted'>Non-Bankruptcy probability</div>", unsafe_allow_html=True)
 
-    except Exception as e:
-        st.error(f"Prediction failed: {e}")
+            with right:
+                fig = fancy_donut(prob_bank, prob_non)
+                st.plotly_chart(fig, use_container_width=True)
 
-st.markdown("</div>", unsafe_allow_html=True)  # close card
+        except Exception as e:
+            st.error(f"Prediction failed: {e}")
 
-# ---------------------------------------
-# Batch upload & simple pie summary
-# ---------------------------------------
+st.markdown('</div>', unsafe_allow_html=True)  # close glass
+
+# ---------------------------
+# Batch upload & summary (keeps simple pie)
+# ---------------------------
 if uploaded is not None:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.header("📁 Batch Dataset Prediction (Uploaded)")
+    st.markdown('<div class="glass">', unsafe_allow_html=True)
+    st.markdown("### Batch Dataset Prediction (Uploaded)", unsafe_allow_html=True)
     try:
         if uploaded.name.endswith(".csv"):
             df = pd.read_csv(uploaded)
@@ -230,7 +295,7 @@ if uploaded is not None:
         df = None
 
     if df is not None:
-        st.subheader("Uploaded data preview")
+        st.subheader("Preview")
         st.dataframe(df.head())
 
         try:
@@ -243,29 +308,25 @@ if uploaded is not None:
             bankrupt_count = (df["Prediction"] == "Bankruptcy").sum()
             non_bankrupt_count = (df["Prediction"] == "Non-Bankruptcy").sum()
 
-            st.subheader("📈 Dataset Summary")
             colA, colB = st.columns(2)
             colA.metric("Bankruptcy cases", int(bankrupt_count))
             colB.metric("Non-Bankruptcy cases", int(non_bankrupt_count))
 
-            # Pie chart for dataset
-            plot_pie = go.Figure(data=[go.Pie(
+            # Pie chart
+            fig2 = go.Figure(data=[go.Pie(
                 labels=["Bankruptcy", "Non-Bankruptcy"],
                 values=[bankrupt_count, non_bankrupt_count],
                 hole=0.45,
-                marker=dict(colors=["#ef553b", "#00cc96"]),
+                marker=dict(colors=["#ff6b6b", "#20c997"]),
                 textinfo="label+percent"
             )])
-            plot_pie.update_layout(title_text="Bankruptcy distribution in uploaded dataset", title_x=0.5, margin=dict(t=30, b=0))
-            st.plotly_chart(plot_pie, use_container_width=True)
+            fig2.update_layout(title_text="Bankruptcy distribution in uploaded dataset", title_x=0.5, margin=dict(t=30, b=10))
+            st.plotly_chart(fig2, use_container_width=True)
 
-            # download
             csv = df.to_csv(index=False).encode("utf-8")
             st.download_button("⬇️ Download Predictions CSV", csv, "predictions.csv", "text/csv")
 
         except Exception as e:
             st.error(f"Batch prediction failed: {e}")
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
-
+    st.markdown('</div>', unsafe_allow_html=True)
