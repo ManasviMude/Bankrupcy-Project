@@ -19,18 +19,16 @@ st.set_page_config(
 )
 
 # ---------------------------
-# Custom CSS for Beautiful Light UI
+# Custom CSS for a Clean Light UI
 # ---------------------------
 st.markdown("""
     <style>
-        /* Global page background */
         body {
-            background-color: #f7f9fc;
+            background-color: #f5f7fa;
             color: #2c2c2c;
             font-family: 'Segoe UI', sans-serif;
         }
 
-        /* Main content container */
         .stApp {
             background-color: #ffffff;
             padding: 2.5rem;
@@ -38,32 +36,44 @@ st.markdown("""
             box-shadow: 0px 6px 18px rgba(0,0,0,0.05);
         }
 
-        /* Improved heading design */
         .main-title {
             text-align: center;
-            color: #002855; /* darker navy blue for contrast */
+            color: #002855;
             font-weight: 800;
-            font-size: 2.1rem;
+            font-size: 2.2rem;
             background: linear-gradient(90deg, #003366, #0077b6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
         }
 
         .subtitle {
             text-align: center;
-            color: #555;
-            font-size: 1.1rem;
+            color: #444;
+            font-size: 1.05rem;
             margin-bottom: 2rem;
         }
 
-        /* Input section labels */
-        .stNumberInput label {
+        .section-box {
+            background-color: #f0f4f8;
+            border-radius: 12px;
+            padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.03);
+        }
+
+        .section-header {
+            color: #003366;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .stSelectbox label {
             font-weight: 600;
             color: #2c3e50;
         }
 
-        /* Prediction button */
         .stButton button {
             background: linear-gradient(to right, #4A90E2, #50E3C2);
             color: white;
@@ -80,7 +90,6 @@ st.markdown("""
             background: linear-gradient(to right, #50E3C2, #4A90E2);
         }
 
-        /* Footer */
         .footer {
             text-align: center;
             color: #888;
@@ -97,22 +106,29 @@ st.markdown("<h1 class='main-title'>🏦 Bankruptcy Prediction App</h1>", unsafe
 st.markdown("<p class='subtitle'>Predict a company's financial health using Logistic Regression</p>", unsafe_allow_html=True)
 
 # ---------------------------
-# Input Section
+# Input Section (with 0, 0.5, 1 options)
 # ---------------------------
-st.markdown("### 📊 Enter Company Financial Indicators")
+st.markdown("<div class='section-box'>", unsafe_allow_html=True)
+st.markdown("<div class='section-header'>📊 Enter Company Financial Indicators</div>", unsafe_allow_html=True)
+
+options = [0.0, 0.5, 1.0]
 
 col1, col2 = st.columns(2)
 with col1:
-    industrial_risk = st.number_input("Industrial Risk", 0.0, 1.0, 0.5)
-    management_risk = st.number_input("Management Risk", 0.0, 1.0, 0.5)
-    financial_flexibility = st.number_input("Financial Flexibility", 0.0, 1.0, 0.5)
+    industrial_risk = st.selectbox("Industrial Risk", options, index=1)
+    management_risk = st.selectbox("Management Risk", options, index=1)
+    financial_flexibility = st.selectbox("Financial Flexibility", options, index=1)
 
 with col2:
-    credibility = st.number_input("Credibility", 0.0, 1.0, 0.5)
-    competitiveness = st.number_input("Competitiveness", 0.0, 1.0, 0.5)
-    operating_risk = st.number_input("Operating Risk", 0.0, 1.0, 0.5)
+    credibility = st.selectbox("Credibility", options, index=1)
+    competitiveness = st.selectbox("Competitiveness", options, index=1)
+    operating_risk = st.selectbox("Operating Risk", options, index=1)
 
-# Prepare DataFrame for prediction
+st.markdown("</div>", unsafe_allow_html=True)  # close section box
+
+# ---------------------------
+# Prepare DataFrame for Prediction
+# ---------------------------
 data = pd.DataFrame({
     'industrial_risk': [industrial_risk],
     'management_risk': [management_risk],
@@ -134,7 +150,7 @@ if st.button("🔍 Predict Bankruptcy"):
         st.error("⚠️ **Result:** The company is predicted to be at risk of **Bankruptcy**.")
         st.markdown(
             "<div style='background-color:#ffe6e6;padding:12px;border-left:6px solid #ff4d4d;border-radius:8px;margin-top:10px;'>"
-            "<b>💡 Suggestion:</b> Improve liquidity, reduce operational risk, and increase management efficiency."
+            "<b>💡 Suggestion:</b> Improve liquidity, reduce operational risk, and enhance management efficiency."
             "</div>",
             unsafe_allow_html=True
         )
@@ -142,12 +158,12 @@ if st.button("🔍 Predict Bankruptcy"):
         st.success("✅ **Result:** The company is predicted to be **Financially Healthy**.")
         st.markdown(
             "<div style='background-color:#e6ffed;padding:12px;border-left:6px solid #00cc66;border-radius:8px;margin-top:10px;'>"
-            "<b>💡 Suggestion:</b> Maintain strong financial flexibility and competitiveness to stay stable."
+            "<b>💡 Suggestion:</b> Maintain strong financial flexibility and competitiveness to ensure long-term stability."
             "</div>",
             unsafe_allow_html=True
         )
 
 # ---------------------------
-# Footer Section
+# Footer
 # ---------------------------
 st.markdown("<p class='footer'></p>", unsafe_allow_html=True)
