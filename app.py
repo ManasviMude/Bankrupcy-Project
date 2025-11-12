@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import pickle
+import matplotlib.pyplot as plt
+import numpy as np
 
 # ---------------------------
 # Load trained Logistic Regression model
@@ -160,13 +162,37 @@ data = pd.DataFrame({
 })
 
 # ---------------------------
-# Prediction Section
+# Prediction Section + Probability Chart
 # ---------------------------
 st.markdown("---")
 if st.button("🔍 Predict Bankruptcy"):
+    # Prediction and (if available) probabilities
     prediction = model.predict(data)[0]
-    st.markdown("---")
 
+    # Try to obtain probability for each class
+    if hasattr(model, "predict_proba"):
+        probs = model.predict_proba(data)[0]  # array in order of model.classes_
+        # Ensure mapping: find index of class 0 (bankruptcy) and class 1 (non-bankruptcy)
+        classes = list(model.classes_)
+        # Default mapping
+        try:
+            idx_bankruptcy = classes.index(0)
+            idx_nonbank = classes.index(1)
+        except ValueError:
+            # if classes are strings or reversed, try common labels
+            # map smallest prob to bankruptcy if unsure (fallback)
+            idx_bankruptcy = 0
+            idx_nonbank = 1 if len(classes) > 1 else 0
+
+        prob_bankruptcy = probs[idx_bankruptcy]
+        prob_nonbank = probs[idx_nonbank] if idx_nonbank < len(probs) else (1 - prob_bankruptcy)
+    else:
+        # fallback: no predict_proba available
+        prob_bankruptcy = 1.0 if prediction == 0 else 0.0
+        prob_nonbank = 1.0 - prob_bankruptcy
+
+    # Show textual result and suggestion
+    st.markdown("---")
     if prediction == 0:
         st.error("⚠️ **Result:** The company is predicted to be at risk of **Bankruptcy**.")
         st.markdown(
@@ -183,5 +209,52 @@ if st.button("🔍 Predict Bankruptcy"):
             "</div>",
             unsafe_allow_html=True
         )
+
+    # ---------------------------
+    # Show probabilities (percentages)
+    # ---------------------------
+    st.markdown("### 🔢 Predicted Probabilities")
+    perc_bank = round(prob_bankruptcy * 100, 1)
+    perc_non = round(prob_nonbank * 100, 1)
+
+    # numeric display side-by-side
+    c1, c2 = st.columns(2)
+    c1.metric("Bankruptcy", f"{perc_bank} %", delta=None)
+    c2.metric("Non-Bankruptcy", f"{perc_non} %", delta=None)
+
+    # ---------------------------
+    # Create a pie chart and horizontal bar chart using matplotlib
+    # ---------------------------
+    labels = ['Bankruptcy', 'Non-Bankruptcy']
+    values = [prob_bankruptcy, prob_nonbank]
+    colors = ['#ff6b6b', '#4cd964']
+
+    # Pie chart (donut)
+    fig1, ax1 = plt.subplots(figsize=(3.5, 3.5))
+    wedges, texts, autotexts = ax1.pie(
+        values,
+        labels=labels,
+        autopct=lambda pct: f"{pct:.1f}%",
+        startangle=90,
+        colors=colors,
+        wedgeprops=dict(width=0.45, edgecolor='w')
+    )
+    ax1.axis('equal')  # equal aspect ratio ensures pie is drawn as a circle
+    plt.setp(autotexts, size=10, weight="bold", color="#333333")
+    plt.setp(texts, size=10)
+    st.pyplot(fig1, clear_figure=True)
+
+    # Horizontal bar chart
+    fig2, ax2 = plt.subplots(figsize=(6, 1.2))
+    y_pos = np.arange(len(labels))
+    ax2.barh(y_pos, [v * 100 for v in values], color=colors, height=0.6)
+    ax2.set_yticks(y_pos)
+    ax2.set_yticklabels(labels)
+    ax2.set_xlim(0, 100)
+    ax2.invert_yaxis()  # highest on top
+    ax2.set_xlabel('Probability (%)')
+    for i, v in enumerate([v * 100 for v in values]):
+        ax2.text(v + 1.5, i, f"{v:.1f}%", va='center', color='#333333', fontweight='600')
+    st.pyplot(fig2, clear_figure=True)
 
 
