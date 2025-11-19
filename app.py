@@ -134,7 +134,7 @@ with st.sidebar:
     if hasattr(model, "classes_"):
         st.write(f"- Classes: {list(model.classes_)}")
     st.markdown("---")
-    st.write("Developer: Your Name")
+    st.write("Developer: Group No 5")
 
 # ---------------------------------------
 # Main header
